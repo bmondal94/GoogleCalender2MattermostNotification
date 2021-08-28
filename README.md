@@ -1,2 +1,2 @@
 # GoogleCalender2MattermostNotification
-This reads google calender and send notification to mattermost
+This reads google calendar and send notification to mattermost
