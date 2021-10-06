@@ -8,13 +8,12 @@ import re
 import json
 import numpy as np
 
-#get_ipython().system('curl -s -o /tmp/basic.ics https://calendar.google.com/calendar/ical/.../basic.ics')
 get_ipython().system('curl -s -o /tmp/basic.ics https://calendar.google.com/calendar/ical/.../basic.ics')
 g = open('/tmp/basic.ics','rb')
 gcal = Calendar.from_ical(g.read())
 g.close()
 
-now = datetime.now(timezone('Europe/Berlin')) #+timedelta(days=2,hours=9,minutes=20)
+now = datetime.now(timezone('Europe/Berlin'))# +timedelta(days=0,hours=-9,minutes=20)
 #%%
 link_regex=r"\b((?:https?://)?(?:(?:www\.)?(?:[\da-z\.-]+)\.(?:[a-z]{2,6})|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])))(?::[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?(?:/[\w\.-]*)*/?)\b"
 #link_regex = re.compile('((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)',re.DOTALL)
@@ -36,9 +35,12 @@ for component in gcal.walk('VEVENT'):
             
 for component in gcal.walk('VEVENT'):
     Start=component.get('dtstart').dt
-    #print(component.get('dtstart'))
-    looppass=False; updatenedt = False                         
-    if component.get('rrule') and 'WEEKLY' in component['rrule']['freq']:
+    looppass=False; updatenedt = False
+    if isinstance(Start,datetime):    # Check Future
+        CheckDate = Start.date()    
+    else:
+        CheckDate = Start
+    if CheckDate<=now.date() and component.get('rrule') and 'WEEKLY' in component['rrule']['freq']:
         EXDATElist = []
         GetRrulKeys = component['rrule'].keys()
         if component.get('EXDATE'): 
@@ -70,14 +72,13 @@ for component in gcal.walk('VEVENT'):
                 myshiftdays = (now-startweekdays).days
                 Startnn=startweekdays+timedelta(days=myshiftdays+1)
                 if (Startnn not in EXDATElist):
-                        #print(component)
                         if ('UNTIL' in GetRrulKeys) and Startnn>component['rrule']['until'][0]: 
                             pass
                         else:
                             Start = Startnn
                             updatenedt = True  
-                #print(component.get('dtend').dt)
-    elif component.get('rrule') and 'WEEKLY' not in component['rrule']['freq']:
+
+    elif CheckDate<=now.date() and component.get('rrule') and 'WEEKLY' not in component['rrule']['freq']:
         pass
     else:
         pass
