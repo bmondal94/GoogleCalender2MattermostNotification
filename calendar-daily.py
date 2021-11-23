@@ -13,7 +13,7 @@ g = open('/tmp/basic.ics','rb')
 gcal = Calendar.from_ical(g.read())
 g.close()
 
-now = datetime.now(timezone('Europe/Berlin'))# +timedelta(days=0,hours=-9,minutes=20)
+nnow = datetime.now(timezone('Europe/Berlin')) #+timedelta(days=10,hours=-2,minutes=20)
 #%%
 link_regex=r"\b((?:https?://)?(?:(?:www\.)?(?:[\da-z\.-]+)\.(?:[a-z]{2,6})|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])))(?::[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?(?:/[\w\.-]*)*/?)\b"
 #link_regex = re.compile('((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)',re.DOTALL)
@@ -37,7 +37,8 @@ for component in gcal.walk('VEVENT'):
     Start=component.get('dtstart').dt
     looppass=False; updatenedt = False
     if isinstance(Start,datetime):    # Check Future
-        CheckDate = Start.date()    
+        CheckDate = Start.date()  
+        now = nnow.replace(tzinfo=Start.tzinfo) # This condition is to avaoid recurrence event Daylight time correction.
     else:
         CheckDate = Start
     if CheckDate<=now.date() and component.get('rrule') and 'WEEKLY' in component['rrule']['freq']:
@@ -81,19 +82,23 @@ for component in gcal.walk('VEVENT'):
     elif CheckDate<=now.date() and component.get('rrule') and 'WEEKLY' not in component['rrule']['freq']:
         pass
     else:
-        pass
+        if isinstance(Start,datetime): 
+            Start=Start.astimezone()
+            now=nnow
+        
     if isinstance(Start,datetime): 
         diff = Start - now
         if  diff.total_seconds()< time_interval and diff.total_seconds()>=0:
             looppass=True
             # Adjust for the local time zone
             # if no such info exist in the object
-            Start=Start.astimezone()
-            Start=str(Start.year),'-',str(format(Start.month,'02d')),'-',str(format(Start.day,'02d')),' at ', str(format(Start.hour,'02d')),':',str(format(Start.minute,'02d'))
-            Start=''.join(Start)
             End=component.get('dtend').dt
             if updatenedt: End += timedelta(days=myshiftdays+1)
-            End=End.astimezone()
+            End=End.astimezone(Start.tzinfo)
+            Start=str(Start.year),'-',str(format(Start.month,'02d')),'-',str(format(Start.day,'02d')),' at ', str(format(Start.hour,'02d')),':',str(format(Start.minute,'02d'))
+            Start=''.join(Start)
+            
+            
             End=str(End.year),'-',str(format(End.month,'02d')),'-',str(format(End.day,'02d')),' at ', str(format(End.hour,'02d')),':',str(format(End.minute,'02d'))
             End = ''.join(End)
     else:
@@ -156,7 +161,7 @@ generator_value = np.array([make_datetime(data[item]['stime']) for item in data 
 sorted_index = np.argsort(generator_value)
 sortdata = {str(i):data[i] for i in sorted_index}
 
-with open('CalenderData.json', 'w', encoding='utf8') as f:
+with open('/home/bmondal/CalenderData.json', 'w', encoding='utf8') as f:
     json.dump(sortdata, f)
                     
 #get_ipython().system('rm /tmp/basic.ics > /dev/null')
