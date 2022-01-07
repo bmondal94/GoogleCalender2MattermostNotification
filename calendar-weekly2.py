@@ -11,6 +11,7 @@ from datetime import datetime,  date, timedelta, time
 from pytz import UTC      # timezone
 from pytz import timezone # timezone
 import numpy as np
+import readgooglesheet as GS
 
 def next_weekday(d, weekday):
     days_ahead = weekday - d.weekday()
@@ -18,7 +19,6 @@ def next_weekday(d, weekday):
         days_ahead += 7
     return d + timedelta(days_ahead)
 
-#get_ipython().system('curl -s -o /tmp/basic.ics https://calendar.google.com/calendar/ical/.../basic.ics')
 get_ipython().system('curl -s -o /tmp/basic.ics https://calendar.google.com/calendar/ical/..../basic.ics')
 g = open('/tmp/basic.ics','rb')
 gcal = Calendar.from_ical(g.read())
@@ -26,7 +26,7 @@ g.close()
 
 now = datetime.now(timezone('Europe/Berlin')) #+timedelta(days=-1,hours=10,minutes=23)
 
-template_payload=r"""payload={"text": ":speaking_head: \n ### Hi there! Morning!! \n
+template_payload=r"""payload={"icon_emoji":":group-image:","username": "my-group","text": ":speaking_head: \n ### Hi there! Morning!! \n
 #### Looks like we have some event(s) this week :spiral_calendar: \nSUMMARY"}"""
 
 #%%
@@ -48,6 +48,7 @@ for component in gcal.walk('VEVENT'):
             exdatelist_rid[component.get('uid')] = [component.get('recurrence-id').dt]
 
 for component in gcal.walk('VEVENT'):
+
     if component.get('rrule') and 'WEEKLY' in component['rrule']['freq']:
         GetRrulKeys = component['rrule'].keys()
         heresummary = component.get('summary').strip()
@@ -68,6 +69,7 @@ for component in gcal.walk('VEVENT'):
         if ('BYDAY' in GetRrulKeys):
             for I  in component['rrule']['BYDAY']:
                 Start=component.get('dtstart').dt 
+                nnow = now.replace(tzinfo=Start.tzinfo) if isinstance(Start,datetime) else now # For DST correction
                 if day_ind[I] != Start.weekday(): Start = next_weekday(Start, day_ind[I]) # 0 = Monday, 1=Tuesday, 2=Wednesday...
                 while True:
                     if Start not in EXDATElist:       
@@ -136,8 +138,8 @@ if SUmmary:
     for i in sorted_index:
         SUlmmary+='**Event: **'+SUmmary[i]['Event']+' ('+SUmmary[i]['evtime']+')\\n'
 else:
-    template_payload=r"""payload={"text": ":speaking_head: \n ### Hi there! Good morning!! \n
-    #### I have a good news for you.  Looks like we have no scheduled events this week :spiral_calendar:\nSUMMARY"}"""
+    template_payload=r"""payload={"icon_emoji":":group-image:","username": "my-group","text": ":speaking_head: \n ### Hi there! Good morning!! \n
+#### I have a good news for you.  Looks like we have no scheduled events this week :spiral_calendar:\nSUMMARY"}"""
     SUlmmary = '**Event: **No events for this week\\n :cocktail: :tada:'  
          
 payload=template_payload.replace('SUMMARY',SUlmmary)
@@ -151,3 +153,13 @@ get_ipython().system("curl -s -k -X POST --data-urlencode '{payload}' Mattermost
 
 #%%
 get_ipython().system('rm /tmp/basic.ics > /dev/null')
+
+#%%----------------------------------------------------------------------------
+
+fname = '/home/bmondal/GoogleSheetMeetingList.csv'
+try:
+    payloadGS = GS.SendWeeklyNotification(fname)
+    #print(payloadGS)
+    get_ipython().system("curl -s -k -X POST --data-urlencode '{payloadGS}' Mattermost_hook_address >/dev/null")
+except:
+    pass

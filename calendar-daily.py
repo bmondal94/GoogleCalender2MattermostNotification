@@ -7,13 +7,18 @@ from pytz import timezone # timezone
 import re
 import json
 import numpy as np
+import readgooglesheet as GS
 
 get_ipython().system('curl -s -o /tmp/basic.ics https://calendar.google.com/calendar/ical/.../basic.ics')
 g = open('/tmp/basic.ics','rb')
 gcal = Calendar.from_ical(g.read())
 g.close()
 
-nnow = datetime.now(timezone('Europe/Berlin')) #+timedelta(days=10,hours=-2,minutes=20)
+
+fname = '/home/bmondal/GoogleSheetMeetingList.csv'
+nDescription = GS.UpdateDescription(fname)
+
+nnow = datetime.now(timezone('Europe/Berlin')) #+timedelta(days=0,hours=-2,minutes=20)
 #%%
 link_regex=r"\b((?:https?://)?(?:(?:www\.)?(?:[\da-z\.-]+)\.(?:[a-z]{2,6})|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:(?:[0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,7}:|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(?:ffff(?::0{1,4}){0,1}:){0,1}(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])|(?:[0-9a-fA-F]{1,4}:){1,4}:(?:(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(?:25[0-5]|(?:2[0-4]|1{0,1}[0-9]){0,1}[0-9])))(?::[0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])?(?:/[\w\.-]*)*/?)\b"
 #link_regex = re.compile('((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)',re.DOTALL)
@@ -77,8 +82,8 @@ for component in gcal.walk('VEVENT'):
                             pass
                         else:
                             Start = Startnn
-                            updatenedt = True  
-
+                            updatenedt = True 
+                             
     elif CheckDate<=now.date() and component.get('rrule') and 'WEEKLY' not in component['rrule']['freq']:
         pass
     else:
@@ -89,6 +94,7 @@ for component in gcal.walk('VEVENT'):
     if isinstance(Start,datetime): 
         diff = Start - now
         if  diff.total_seconds()< time_interval and diff.total_seconds()>=0:
+        
             looppass=True
             # Adjust for the local time zone
             # if no such info exist in the object
@@ -136,8 +142,15 @@ for component in gcal.walk('VEVENT'):
         
         # Two events can have same 'stime'. 'stime' can't be used as key
         data[count] = {'summary':SUmmary,'stime':Start,'etime':End,'location':LOcation} 
+        
+        
+        if (nDescription is not None) and \
+            (('GROUP SEMINAR' in SUmmary.upper()) or ('GROUP STATUS TALKS' in SUmmary.upper())):
+                DEscription  = nDescription + ' (' + DEscription + ' )'                
+        
         if DEscription.strip():
             data[count].update({'description': DEscription})
+            
         if component.get("attach"):
             attachment = component.get("attach")
             if isinstance(attachment, list):
@@ -166,4 +179,15 @@ with open('/home/bmondal/CalenderData.json', 'w', encoding='utf8') as f:
                     
 #get_ipython().system('rm /tmp/basic.ics > /dev/null')
 
+#%%----------------------------------------------------------------------------
 
+GoogleSheet = 'https://docs.google.com/spreadsheets/d'
+SheetId = '....'
+SheetNumber = 0
+sheeturl = f"{GoogleSheet}/{SheetId}/export?format=csv&gid={SheetNumber}"
+try:
+    gspayload = GS.CheckUpdated(sheeturl, fname)
+    #print(gspayload)
+    get_ipython().system("curl -s -k -i -X POST --data-urlencode '{gspayload}' mattermost-site >/dev/null")
+except:
+	pass
