@@ -1,4 +1,4 @@
-#!/home/bmondal/anaconda3/bin/ipython3
+#!/home/bmondal/anaconda3/envs/mattermost/bin/ipython3
 # -*- coding: utf-8 -*-
 """
 Created on Wed May 19 10:29:06 2021
@@ -17,7 +17,7 @@ with open('CalenderData.json') as f:
     data = json.load(f)
 
 #%%
-payload=r"""payload={"text": "### Upcoming today`s event(s)\nsummary"}"""
+payload=r"""payload={"icon_emoji":":group-image:","username": "group","text": "### Upcoming today`s event(s)\nsummary"}"""
 
 sum_text = ''
 for i in data:
@@ -32,5 +32,5 @@ for i in data:
 if (len(sum_text.strip())>0):
     payload=payload.replace('summary',sum_text)
     #print(payload)
-    get_ipython().system("curl -s -k -i -X POST --data-urlencode '{payload}' Mattermost_web_address >/dev/null")
+    get_ipython().system("curl -s -k -i -X POST --data-urlencode '{payload}' <Mattermost_web_address> >/dev/null")
 

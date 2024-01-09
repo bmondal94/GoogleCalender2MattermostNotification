@@ -1,4 +1,4 @@
-#!/home/bmondal/anaconda3/bin/ipython3
+#!/home/bmondal/anaconda3/envs/mattermost/bin/ipython3
 # -*- coding: utf-8 -*-
 """
 Created on Wed May 19 10:29:06 2021
@@ -17,7 +17,7 @@ with open('CalenderData.json') as f:
 
 #%%
 #payload=r"""payload={"text": "### Upcoming Event @all\n **Title: ** SUMMARY \n **Description: ** DESCRIPTION \n **Starts :  ** STARTSAT \n **Ends :    ** ENDSAT\n **Location: ** LOCATION\n"}"""
-payload=r"""payload={"text": "### Upcoming Event in 1 hr @all\n **Title: ** summary \n **Starts :  ** stime \n **Ends :    ** etime\n **Location: ** location\n"}"""
+payload=r"""payload={"icon_emoji":":group-image:","username": "group","text": "### Upcoming Event(s) in the next hr @all\n **Title: ** summary \n **Starts :  ** stime \n **Ends :    ** etime\n **Location: ** location\n"}"""
 now = datetime.now(timezone('Europe/Berlin'))
 
 time_limit = 1 # Collects events within next time_limit hour
@@ -27,6 +27,10 @@ for i in data:
     if not 'Full day event' in compareT:
         if int(compareT[-5:-3])==0: compareT='24:00' # Midnight-01.00AM
         diff = int(compareT[-5:-3])-now.hour # Event time difference in hour
+        # It will be annoying to get notification for every events before 1 hour.
+        # Rather get all list of events coming in the next hour.
+        #diff = (int(compareT[-5:-3])*60+int(compareT[-2:]))-(now.hour*60+now.minute)
+        #if diff==time_limit*60:
         if diff==time_limit: # Collects events within next time_limit hour
             keyword_dict = list(data[i].keys())
             payloadtmp=payload
@@ -37,6 +41,6 @@ for i in data:
             if 'attachment' in  keyword_dict:
                 payloadtmp=payloadtmp[:-2]+' **Attachment: ** '+data[i]['attachment']+'\\n"}'
             
-            #print(payload)
-            get_ipython().system("curl -s -k -i -X POST --data-urlencode '{payloadtmp}' Mattermost_web_address >/dev/null")
+            #print(payloadtmp)
+            get_ipython().system("curl -s -k -i -X POST --data-urlencode '{payloadtmp}' <Mattermost_web_address> >/dev/null")
             

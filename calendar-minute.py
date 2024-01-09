@@ -17,7 +17,7 @@ with open('CalenderData.json') as f:
 
 #%%
 #payload=r"""payload={"text": "### Upcoming Event @all\n **Title: ** SUMMARY \n **Starts :  ** STARTSAT \n **Ends :    ** ENDSAT\n **Location: ** LOCATION\n"}"""
-payload=r"""payload={"text": "### Meeting in 1 min @all\n **Title: ** summary \n **Starts :  ** stime \n **Ends :    ** etime\n **Location: ** location\n"}"""
+payload=r"""payload={"icon_emoji":":group-image:","username": "group","text": "### Meeting in 1 min @all\n **Title: ** summary \n **Starts :  ** stime \n **Ends :    ** etime\n **Location: ** location\n"}"""
 now = datetime.now(timezone('Europe/Berlin'))
 
 time_limit = 1 # Collects events within next time_limit minute
@@ -39,5 +39,5 @@ for i in data:
                 payloadtmp=payloadtmp[:-2]+' **Attachment: ** '+data[i]['attachment']+'\\n"}'
             
             #print(payloadtmp)
-            get_ipython().system("curl -s -k -i -X POST --data-urlencode '{payloadtmp}' Mattermost_web_address >/dev/null")
+            get_ipython().system("curl -s -k -i -X POST --data-urlencode '{payloadtmp}' <Mattermost_web_address> >/dev/null")
             

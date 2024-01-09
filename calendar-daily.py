@@ -1,4 +1,4 @@
-#!/home/bmondal/anaconda3/bin/ipython3
+#!/home/bmondal/anaconda3/envs/mattermost/bin/ipython3
 # coding: utf-8
 from icalendar import Calendar,prop
 from datetime import datetime, date, timedelta,time
@@ -7,7 +7,7 @@ from pytz import timezone # timezone
 import re
 import json
 import numpy as np
-import readgooglesheet as GS
+#import readgooglesheet as GS
 
 get_ipython().system('curl -s -o /tmp/basic.ics https://calendar.google.com/calendar/ical/.../basic.ics')
 g = open('/tmp/basic.ics','rb')
@@ -15,8 +15,8 @@ gcal = Calendar.from_ical(g.read())
 g.close()
 
 
-fname = '/home/bmondal/GoogleSheetMeetingList.csv'
-nDescription = GS.UpdateDescription(fname)
+fname = '/home/GoogleSheetMeetingList.csv'
+nDescription = None #GS.UpdateDescription_v2(fname)  #None
 
 nnow = datetime.now(timezone('Europe/Berlin')) #+timedelta(days=0,hours=-2,minutes=20)
 #%%
@@ -46,6 +46,7 @@ for component in gcal.walk('VEVENT'):
         now = nnow.replace(tzinfo=Start.tzinfo) # This condition is to avaoid recurrence event Daylight time correction.
     else:
         CheckDate = Start
+        now = nnow
     if CheckDate<=now.date() and component.get('rrule') and 'WEEKLY' in component['rrule']['freq']:
         EXDATElist = []
         GetRrulKeys = component['rrule'].keys()
@@ -55,7 +56,10 @@ for component in gcal.walk('VEVENT'):
             else:
                EXDATElist = [prop.vDatetime.from_ical(component.get('EXDATE').to_ical()).replace(tzinfo=Start.tzinfo)] 
         if component.get('uid') in exdatelist_rid.keys():
-            EXDATElist+=exdatelist_rid[component.get('uid')]
+        	matchtimezone=component.get('dtstart').dt.tzinfo
+            EXDATElist+=[J.replace(tzinfo=matchtimezone) if isinstance(J,datetime)\
+                else J for J in exdatelist_rid[component.get('uid')]]
+            #EXDATElist+=exdatelist_rid[component.get('uid')]
         if ('BYDAY' in GetRrulKeys):
             for I  in component['rrule']['BYDAY']:
                 startweekdays = component.get('dtstart').dt
@@ -114,9 +118,14 @@ for component in gcal.walk('VEVENT'):
             End = '----------'
 
     if looppass:
-        SUmmary=component.get('summary').strip() #[3:]
-        DEscription=re.sub('<[^<]+?>', '',component.get('description').strip())
-        LOcation=component.get('location').strip()
+        SUmmary=component.get('summary')
+        if SUmmary and SUmmary is not None: SUmmary = SUmmary.strip() #[3:]
+        if (component.get('description') is not None):
+            DEscription=re.sub('<[^<]+?>', '',component.get('description').strip())
+        else:
+            DEscription = ''
+        LOcation=component.get('location')
+        if LOcation and LOcation is not None: LOcation = LOcation.strip()
                
         if not LOcation:
             if DEscription:
@@ -145,8 +154,9 @@ for component in gcal.walk('VEVENT'):
         
         
         if (nDescription is not None) and \
-            (('GROUP SEMINAR' in SUmmary.upper()) or ('GROUP STATUS TALKS' in SUmmary.upper())):
-                DEscription  = nDescription + ' (' + DEscription + ' )'                
+            (('GROUP SEMINAR' in SUmmary.upper()) or ('STATUS TALKS' in SUmmary.upper())):
+                DEscription  = nDescription + ' (' + DEscription + ' )' if (DEscription and len(DEscription)>0) else nDescription 
+                data[count].update({'location':'Seminar room'})                
         
         if DEscription.strip():
             data[count].update({'description': DEscription})
@@ -174,7 +184,7 @@ generator_value = np.array([make_datetime(data[item]['stime']) for item in data 
 sorted_index = np.argsort(generator_value)
 sortdata = {str(i):data[i] for i in sorted_index}
 
-with open('/home/bmondal/CalenderData.json', 'w', encoding='utf8') as f:
+with open('/home/CalenderData.json', 'w', encoding='utf8') as f:
     json.dump(sortdata, f)
                     
 #get_ipython().system('rm /tmp/basic.ics > /dev/null')
@@ -188,6 +198,6 @@ sheeturl = f"{GoogleSheet}/{SheetId}/export?format=csv&gid={SheetNumber}"
 try:
     gspayload = GS.CheckUpdated(sheeturl, fname)
     #print(gspayload)
-    get_ipython().system("curl -s -k -i -X POST --data-urlencode '{gspayload}' mattermost-site >/dev/null")
+    get_ipython().system("curl -s -k -i -X POST --data-urlencode '{gspayload}' <mattermost-site> >/dev/null")
 except:
 	pass

@@ -65,7 +65,10 @@ for component in gcal.walk('VEVENT'):
             else:
                EXDATElist = [prop.vDatetime.from_ical(component.get('EXDATE').to_ical()).replace(tzinfo=SS.tzinfo)] 
         if component.get('uid') in exdatelist_rid.keys():
-            EXDATElist+=exdatelist_rid[component.get('uid')]
+        	matchtimezone=component.get('dtstart').dt.tzinfo
+            EXDATElist+=[J.replace(tzinfo=matchtimezone) if isinstance(J,datetime)\
+                else J for J in exdatelist_rid[component.get('uid')]]
+            #EXDATElist+=exdatelist_rid[component.get('uid')]
         if ('BYDAY' in GetRrulKeys):
             for I  in component['rrule']['BYDAY']:
                 Start=component.get('dtstart').dt 
@@ -74,7 +77,7 @@ for component in gcal.walk('VEVENT'):
                 while True:
                     if Start not in EXDATElist:       
                         try:
-                            diff = (Start - now).total_seconds()
+                            diff = (Start - nnow).total_seconds()
                         except:
                             diff = (Start - date.today()).total_seconds()                    
                         if  diff< time_interval and diff>=0:
